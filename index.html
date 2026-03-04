@@ -185,6 +185,7 @@
       font-weight: 900;
       cursor: pointer;
       transition: transform .06s ease, filter .15s ease, opacity .15s ease;
+      user-select: none;
     }
     .btn:active{ transform: translateY(1px); }
     .btn-primary{
@@ -199,6 +200,20 @@
       color: var(--text);
     }
     .btn-ghost:hover{ background: rgba(236,72,153,.06); }
+    .btn-danger{
+      background: rgba(239,68,68,.10);
+      border: 1px solid rgba(239,68,68,.25);
+      color: #7f1d1d;
+    }
+    .btn-danger:hover{
+      background: rgba(239,68,68,.14);
+    }
+    .btn-sm{
+      padding: 8px 10px;
+      border-radius: 10px;
+      font-weight: 900;
+      font-size: 13px;
+    }
     .btn[disabled]{ opacity:.6; cursor:not-allowed; }
 
     /* Admin top row */
@@ -290,6 +305,13 @@
       white-space: nowrap;
     }
     .receipt-link:hover{ background: rgba(236,72,153,.12); }
+
+    .actions{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap: wrap;
+    }
 
     .muted { color: var(--muted); font-size: 13px; }
     .hidden{ display:none !important; }
@@ -443,6 +465,7 @@
                 <th>Plan</th>
                 <th>Amount</th>
                 <th>Receipt</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody id="salesTbody"></tbody>
@@ -462,11 +485,7 @@
       SUPABASE_URL,
       SUPABASE_ANON_KEY,
       {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: true
-        }
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
       }
     );
 
@@ -533,9 +552,7 @@
       await syncAdminUI();
     };
 
-    function safeFileName(name) {
-      return name.replace(/[^\w.\-]+/g, "_");
-    }
+    function safeFileName(name) { return name.replace(/[^\w.\-]+/g, "_"); }
 
     // CUSTOMER SUBMIT
     salesForm.addEventListener("submit", async (e) => {
@@ -688,6 +705,32 @@
       stat1Month.textContent = m1;
     }
 
+    async function deleteSaleById(id) {
+      // extra confirm
+      const ok = confirm("Delete this record permanently?\n\nThis cannot be undone.");
+      if (!ok) return;
+
+      try {
+        hideMsg();
+
+        const { error } = await supabaseClient
+          .from("sales")
+          .delete()
+          .eq("id", id);
+
+        if (error) throw error;
+
+        // remove from cache and re-render
+        cachedSales = cachedSales.filter(r => r.id !== id);
+        renderSales();
+        renderStats();
+        showMsg("✅ Deleted successfully.", true);
+      } catch (err) {
+        console.error(err);
+        showMsg("❌ " + (err?.message || "Delete failed"), false);
+      }
+    }
+
     function renderSales() {
       const q = (searchInput.value || "").toLowerCase().trim();
       const plan = filterPlan.value;
@@ -706,6 +749,7 @@
         const receipt = r.receipt_url
           ? `<a class="receipt-link" href="${r.receipt_url}" target="_blank" rel="noopener">View</a>`
           : `<span class="muted">—</span>`;
+
         return `
           <tr>
             <td>${escapeHtml(date)}</td>
@@ -714,9 +758,19 @@
             <td>${escapeHtml(r.plan || "")}</td>
             <td>${money(r.amount_paid)}</td>
             <td>${receipt}</td>
+            <td>
+              <div class="actions">
+                <button class="btn btn-danger btn-sm" type="button" data-delete-id="${escapeHtml(r.id)}">Delete</button>
+              </div>
+            </td>
           </tr>
         `;
       }).join("");
+
+      // attach delete handlers
+      document.querySelectorAll("[data-delete-id]").forEach(btn => {
+        btn.addEventListener("click", () => deleteSaleById(btn.getAttribute("data-delete-id")));
+      });
     }
 
     function escapeHtml(s) {
