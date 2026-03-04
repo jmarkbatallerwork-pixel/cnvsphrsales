@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sales Form</title>
+  <style>
+    body { font-family: system-ui, Arial; max-width: 720px; margin: 40px auto; padding: 0 16px; }
+    form { display: grid; gap: 12px; }
+    label { font-weight: 600; }
+    input, select, button { padding: 10px; font-size: 16px; }
+    .row { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+    .hint { color: #666; font-size: 13px; }
+    .msg { padding: 12px; border-radius: 8px; display: none; }
+    .msg.ok { background: #e8fff0; border: 1px solid #8be3aa; }
+    .msg.err { background: #fff0f0; border: 1px solid #f3a3a3; }
+  </style>
+</head>
+<body>
+  <h1>Customer Sales Form</h1>
+  <p class="hint">This saves data to Supabase (table: <b>sales</b>) and uploads receipt to Storage bucket: <b>receipts</b>.</p>
+
+  <div id="msg" class="msg"></div>
+
+  <form id="salesForm">
+    <div>
+      <label>Full Name</label>
+      <input name="full_name" required placeholder="Juan Dela Cruz"/>
+    </div>
+
+    <div>
+      <label>Email Address</label>
+      <input name="email" type="email" required placeholder="juan@email.com"/>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Plan</label>
+        <select name="plan" required>
+          <option value="Lifetime">Lifetime</option>
+          <option value="1Month">1Month</option>
+        </select>
+      </div>
+      <div>
+        <label>Amount Paid</label>
+        <input name="amount_paid" type="number" step="0.01" required placeholder="999.00"/>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Date Availed</label>
+        <input name="date_availed" type="date" required />
+      </div>
+      <div>
+        <label>Upload Receipt</label>
+        <input name="receipt" type="file" accept="image/*,application/pdf" required />
+      </div>
+    </div>
+
+    <button type="submit">Submit</button>
+  </form>
+
+  <!-- Supabase JS (UMD) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script>
+    // ✅ 1) Paste your Supabase credentials here
+    const SUPABASE_URL = "https://uwqnbjzliyvbdkkiaely.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3cW5ianpsaXl2YmRra2lhZWx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2MDY1OTMsImV4cCI6MjA4ODE4MjU5M30.0BBBiysKOhyQNaeBeGMwFWlu6_F8Gj4_WgkbFNdvLYU";
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const form = document.getElementById("salesForm");
+    const msg = document.getElementById("msg");
+
+    function showMsg(text, ok=true) {
+      msg.className = "msg " + (ok ? "ok" : "err");
+      msg.textContent = text;
+      msg.style.display = "block";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function safeFileName(name) {
+      return name.replace(/[^\w.\-]+/g, "_");
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      msg.style.display = "none";
+
+      const fd = new FormData(form);
+      const full_name = fd.get("full_name").trim();
+      const email = fd.get("email").trim();
+      const plan = fd.get("plan");
+      const amount_paid = Number(fd.get("amount_paid"));
+      const date_availed = fd.get("date_availed");
+      const receiptFile = fd.get("receipt");
+
+      try {
+        // 1) Upload receipt to Supabase Storage
+        const fileExt = receiptFile.name.split(".").pop();
+        const filePath = `receipts/${crypto.randomUUID()}_${safeFileName(receiptFile.name)}`;
+
+        const { data: uploadData, error: uploadError } = await supabase
+          .storage
+          .from("receipts")
+          .upload(filePath, receiptFile, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: receiptFile.type || undefined
+          });
+
+        if (uploadError) throw uploadError;
+
+        // 2) Get public URL (because bucket is public)
+        const { data: publicUrlData } = supabase
+          .storage
+          .from("receipts")
+          .getPublicUrl(filePath);
+
+        const receipt_url = publicUrlData.publicUrl;
+
+        // 3) Insert row to sales table
+        const { error: insertError } = await supabase
+          .from("sales")
+          .insert([{
+            full_name,
+            email,
+            plan,
+            amount_paid,
+            date_availed,
+            receipt_url
+          }]);
+
+        if (insertError) throw insertError;
+
+        form.reset();
+        showMsg("✅ Saved! Customer info + receipt uploaded successfully.", true);
+      } catch (err) {
+        console.error(err);
+        showMsg("❌ Error: " + (err?.message || "Something went wrong"), false);
+      }
+    });
+  </script>
+</body>
+</html>
