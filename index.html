@@ -3,131 +3,439 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Sales Form</title>
+  <title>Sales System</title>
   <style>
-    body { font-family: system-ui, Arial; max-width: 720px; margin: 40px auto; padding: 0 16px; }
+    body { font-family: system-ui, Arial; max-width: 980px; margin: 30px auto; padding: 0 16px; }
+    h1 { margin: 0 0 6px; }
+    .hint { color: #666; font-size: 13px; margin: 0 0 18px; }
+    .tabs { display: flex; gap: 10px; margin: 16px 0 18px; }
+    .tabs button { padding: 10px 12px; cursor: pointer; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 14px; margin: 14px 0; }
     form { display: grid; gap: 12px; }
     label { font-weight: 600; }
     input, select, button { padding: 10px; font-size: 16px; }
     .row { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
-    .hint { color: #666; font-size: 13px; }
-    .msg { padding: 12px; border-radius: 8px; display: none; }
+    .msg { padding: 12px; border-radius: 8px; display: none; margin: 12px 0; }
     .msg.ok { background: #e8fff0; border: 1px solid #8be3aa; }
     .msg.err { background: #fff0f0; border: 1px solid #f3a3a3; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-bottom: 1px solid #eee; padding: 10px; text-align: left; vertical-align: top; }
+    th { background: #fafafa; position: sticky; top: 0; }
+    .muted { color: #666; font-size: 13px; }
+    .flex { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .pill { padding: 6px 10px; border: 1px solid #ddd; border-radius: 999px; }
+    .right { margin-left: auto; }
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
-  <h1>Customer Sales Form</h1>
-  <p class="hint">This saves data to Supabase (table: <b>sales</b>) and uploads receipt to Storage bucket: <b>receipts</b>.</p>
+  <h1>Sales System</h1>
+  <p class="hint">Customer form + Admin dashboard (Supabase + Vercel) — single HTML file.</p>
+
+  <div class="tabs">
+    <button id="tabCustomer">Customer Form</button>
+    <button id="tabAdmin">Admin</button>
+  </div>
 
   <div id="msg" class="msg"></div>
 
-  <form id="salesForm">
-    <div>
-      <label>Full Name</label>
-      <input name="full_name" required placeholder="Juan Dela Cruz"/>
+  <!-- CUSTOMER VIEW -->
+  <section id="viewCustomer" class="card">
+    <h2 style="margin-top:0;">Customer Sales Form</h2>
+    <p class="muted">Saves to table <b>sales</b> and uploads to bucket <b>receipts</b>.</p>
+
+    <form id="salesForm">
+      <div>
+        <label>Full Name</label>
+        <input name="full_name" required placeholder="Juan Dela Cruz"/>
+      </div>
+
+      <div>
+        <label>Email Address</label>
+        <input name="email" type="email" required placeholder="juan@email.com"/>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Plan</label>
+          <select name="plan" required>
+            <option value="Lifetime">Lifetime</option>
+            <option value="1Month">1Month</option>
+          </select>
+        </div>
+        <div>
+          <label>Amount Paid</label>
+          <input name="amount_paid" type="number" step="0.01" required placeholder="999.00"/>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Date Availed</label>
+          <input name="date_availed" type="date" required />
+        </div>
+        <div>
+          <label>Upload Receipt</label>
+          <input name="receipt" type="file" accept="image/*,application/pdf" required />
+        </div>
+      </div>
+
+      <button id="btnCustomerSubmit" type="submit">Submit</button>
+    </form>
+  </section>
+
+  <!-- ADMIN VIEW -->
+  <section id="viewAdmin" class="card hidden">
+    <div class="flex">
+      <h2 style="margin:0;">Admin</h2>
+      <div class="right flex">
+        <span id="adminEmail" class="pill hidden"></span>
+        <button id="btnLogout" class="hidden">Logout</button>
+      </div>
     </div>
 
-    <div>
-      <label>Email Address</label>
-      <input name="email" type="email" required placeholder="juan@email.com"/>
+    <!-- Login -->
+    <div id="adminLoginBox" class="card">
+      <h3 style="margin-top:0;">Admin Login</h3>
+      <form id="adminLoginForm">
+        <div class="row">
+          <div>
+            <label>Email</label>
+            <input name="email" type="email" required />
+          </div>
+          <div>
+            <label>Password</label>
+            <input name="password" type="password" required />
+          </div>
+        </div>
+        <button id="btnAdminLogin" type="submit">Login</button>
+        <div class="muted">Only users in <b>admin_users</b> can access the dashboard.</div>
+      </form>
     </div>
 
-    <div class="row">
-      <div>
-        <label>Plan</label>
-        <select name="plan" required>
-          <option value="Lifetime">Lifetime</option>
-          <option value="1Month">1Month</option>
-        </select>
+    <!-- Dashboard -->
+    <div id="adminDashboard" class="hidden">
+      <div class="flex" style="margin: 10px 0;">
+        <span class="pill">Total Customers: <b id="statCount">0</b></span>
+        <span class="pill">Total Revenue: <b id="statRevenue">0</b></span>
+        <span class="pill">Lifetime: <b id="statLifetime">0</b></span>
+        <span class="pill">1Month: <b id="stat1Month">0</b></span>
+        <button id="btnRefresh" class="right">Refresh</button>
       </div>
-      <div>
-        <label>Amount Paid</label>
-        <input name="amount_paid" type="number" step="0.01" required placeholder="999.00"/>
+
+      <div class="card">
+        <div class="flex" style="margin-bottom:10px;">
+          <input id="searchInput" placeholder="Search name/email..." style="flex:1; min-width: 240px;" />
+          <select id="filterPlan">
+            <option value="">All Plans</option>
+            <option value="Lifetime">Lifetime</option>
+            <option value="1Month">1Month</option>
+          </select>
+        </div>
+
+        <div style="max-height: 420px; overflow: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Full Name</th>
+                <th>Email</th>
+                <th>Plan</th>
+                <th>Amount</th>
+                <th>Receipt</th>
+              </tr>
+            </thead>
+            <tbody id="salesTbody"></tbody>
+          </table>
+        </div>
+        <div class="muted" style="margin-top:10px;">Showing latest 200 records (newest first).</div>
       </div>
     </div>
+  </section>
 
-    <div class="row">
-      <div>
-        <label>Date Availed</label>
-        <input name="date_availed" type="date" required />
-      </div>
-      <div>
-        <label>Upload Receipt</label>
-        <input name="receipt" type="file" accept="image/*,application/pdf" required />
-      </div>
-    </div>
-
-    <button type="submit">Submit</button>
-  </form>
-
-  <!-- Supabase JS (UMD) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
   <script>
-  const SUPABASE_URL = "https://uwqnbjzliyvbdkkiaely.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3cW5ianpsaXl2YmRra2lhZWx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2MDY1OTMsImV4cCI6MjA4ODE4MjU5M30.0BBBiysKOhyQNaeBeGMwFWlu6_F8Gj4_WgkbFNdvLYU";
+    const SUPABASE_URL = "https://uwqnbjzliyvbdkkiaely.supabase.co";
+    const SUPABASE_ANON_KEY = "PeyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3cW5ianpsaXl2YmRra2lhZWx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2MDY1OTMsImV4cCI6MjA4ODE4MjU5M30.0BBBiysKOhyQNaeBeGMwFWlu6_F8Gj4_WgkbFNdvLYU";
 
-  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  const form = document.getElementById("salesForm");
-  const msg = document.getElementById("msg");
+    // UI refs
+    const msg = document.getElementById("msg");
+    const tabCustomer = document.getElementById("tabCustomer");
+    const tabAdmin = document.getElementById("tabAdmin");
+    const viewCustomer = document.getElementById("viewCustomer");
+    const viewAdmin = document.getElementById("viewAdmin");
 
-  function showMsg(text, ok=true) {
-    msg.className = "msg " + (ok ? "ok" : "err");
-    msg.textContent = text;
-    msg.style.display = "block";
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
+    // customer form
+    const salesForm = document.getElementById("salesForm");
+    const btnCustomerSubmit = document.getElementById("btnCustomerSubmit");
 
-  function safeFileName(name) {
-    return name.replace(/[^\w.\-]+/g, "_");
-  }
+    // admin login + dashboard
+    const adminLoginBox = document.getElementById("adminLoginBox");
+    const adminLoginForm = document.getElementById("adminLoginForm");
+    const btnAdminLogin = document.getElementById("btnAdminLogin");
+    const adminDashboard = document.getElementById("adminDashboard");
+    const btnLogout = document.getElementById("btnLogout");
+    const adminEmail = document.getElementById("adminEmail");
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    msg.style.display = "none";
+    const statCount = document.getElementById("statCount");
+    const statRevenue = document.getElementById("statRevenue");
+    const statLifetime = document.getElementById("statLifetime");
+    const stat1Month = document.getElementById("stat1Month");
+    const btnRefresh = document.getElementById("btnRefresh");
+    const salesTbody = document.getElementById("salesTbody");
+    const searchInput = document.getElementById("searchInput");
+    const filterPlan = document.getElementById("filterPlan");
 
-    try {
-      const fd = new FormData(form);
-      const full_name = (fd.get("full_name") || "").toString().trim();
-      const email = (fd.get("email") || "").toString().trim();
-      const plan = fd.get("plan");
-      const amount_paid = Number(fd.get("amount_paid"));
-      const date_availed = fd.get("date_availed");
-      const receiptFile = fd.get("receipt");
+    let cachedSales = [];
 
-      if (!receiptFile || !receiptFile.name) throw new Error("Please choose a receipt file.");
-
-      const filePath = `receipts/${crypto.randomUUID()}_${safeFileName(receiptFile.name)}`;
-
-      const { error: uploadError } = await supabaseClient
-        .storage
-        .from("receipts")
-        .upload(filePath, receiptFile, { upsert: false });
-
-      if (uploadError) throw uploadError;
-
-      const { data: publicUrlData } = supabaseClient
-        .storage
-        .from("receipts")
-        .getPublicUrl(filePath);
-
-      const receipt_url = publicUrlData.publicUrl;
-
-      const { error: insertError } = await supabaseClient
-        .from("sales")
-        .insert([{ full_name, email, plan, amount_paid, date_availed, receipt_url }]);
-
-      if (insertError) throw insertError;
-
-      form.reset();
-      showMsg("✅ Saved! Customer info + receipt uploaded successfully.", true);
-    } catch (err) {
-      console.error(err);
-      showMsg("❌ Error: " + (err?.message || "Something went wrong"), false);
+    function showMsg(text, ok=true) {
+      msg.className = "msg " + (ok ? "ok" : "err");
+      msg.textContent = text;
+      msg.style.display = "block";
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
-  });
-</script>
+    function hideMsg() { msg.style.display = "none"; }
+
+    function showView(which) {
+      hideMsg();
+      if (which === "customer") {
+        viewCustomer.classList.remove("hidden");
+        viewAdmin.classList.add("hidden");
+      } else {
+        viewCustomer.classList.add("hidden");
+        viewAdmin.classList.remove("hidden");
+      }
+    }
+
+    tabCustomer.onclick = () => showView("customer");
+    tabAdmin.onclick = async () => {
+      showView("admin");
+      await syncAdminUI();
+    };
+
+    function safeFileName(name) {
+      return name.replace(/[^\w.\-]+/g, "_");
+    }
+
+    // CUSTOMER SUBMIT
+    salesForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      hideMsg();
+
+      btnCustomerSubmit.disabled = true;
+      btnCustomerSubmit.textContent = "Submitting...";
+
+      try {
+        const fd = new FormData(salesForm);
+        const full_name = (fd.get("full_name") || "").toString().trim();
+        const email = (fd.get("email") || "").toString().trim();
+        const plan = fd.get("plan");
+        const amount_paid = Number(fd.get("amount_paid"));
+        const date_availed = fd.get("date_availed");
+        const receiptFile = fd.get("receipt");
+
+        if (!receiptFile || !receiptFile.name) throw new Error("Please choose a receipt file.");
+
+        const filePath = `receipts/${crypto.randomUUID()}_${safeFileName(receiptFile.name)}`;
+
+        const { error: uploadError } = await supabaseClient
+          .storage.from("receipts")
+          .upload(filePath, receiptFile, { upsert: false });
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = supabaseClient
+          .storage.from("receipts")
+          .getPublicUrl(filePath);
+
+        const receipt_url = publicUrlData.publicUrl;
+
+        const { error: insertError } = await supabaseClient
+          .from("sales")
+          .insert([{ full_name, email, plan, amount_paid, date_availed, receipt_url }]);
+
+        if (insertError) throw insertError;
+
+        salesForm.reset();
+        showMsg("✅ Saved! Customer info + receipt uploaded successfully.", true);
+      } catch (err) {
+        console.error(err);
+        showMsg("❌ " + (err?.message || "Something went wrong"), false);
+      } finally {
+        btnCustomerSubmit.disabled = false;
+        btnCustomerSubmit.textContent = "Submit";
+      }
+    });
+
+    // ADMIN LOGIN
+    adminLoginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      hideMsg();
+
+      btnAdminLogin.disabled = true;
+      btnAdminLogin.textContent = "Logging in...";
+
+      try {
+        const fd = new FormData(adminLoginForm);
+        const email = (fd.get("email") || "").toString().trim();
+        const password = (fd.get("password") || "").toString();
+
+        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+
+        await syncAdminUI();
+        showMsg("✅ Logged in.", true);
+      } catch (err) {
+        console.error(err);
+        showMsg("❌ " + (err?.message || "Login failed"), false);
+      } finally {
+        btnAdminLogin.disabled = false;
+        btnAdminLogin.textContent = "Login";
+      }
+    });
+
+    btnLogout.addEventListener("click", async () => {
+      hideMsg();
+      await supabaseClient.auth.signOut();
+      await syncAdminUI();
+      showMsg("Logged out.", true);
+    });
+
+    async function isCurrentUserAdmin() {
+      // Calls our SQL function is_admin()
+      const { data, error } = await supabaseClient.rpc("is_admin");
+      if (error) {
+        // If not logged in, this can error depending on settings
+        return false;
+      }
+      return !!data;
+    }
+
+    async function syncAdminUI() {
+      const { data: { user } } = await supabaseClient.auth.getUser();
+
+      if (!user) {
+        adminEmail.classList.add("hidden");
+        btnLogout.classList.add("hidden");
+        adminLoginBox.classList.remove("hidden");
+        adminDashboard.classList.add("hidden");
+        return;
+      }
+
+      const ok = await isCurrentUserAdmin();
+      if (!ok) {
+        adminEmail.textContent = user.email || "Not admin";
+        adminEmail.classList.remove("hidden");
+        btnLogout.classList.remove("hidden");
+        adminLoginBox.classList.add("hidden");
+        adminDashboard.classList.add("hidden");
+        showMsg("❌ This account is not in admin_users.", false);
+        return;
+      }
+
+      adminEmail.textContent = user.email || "Admin";
+      adminEmail.classList.remove("hidden");
+      btnLogout.classList.remove("hidden");
+      adminLoginBox.classList.add("hidden");
+      adminDashboard.classList.remove("hidden");
+
+      await loadSales();
+      renderSales();
+      renderStats();
+    }
+
+    async function loadSales() {
+      // Latest 200, newest first
+      const { data, error } = await supabaseClient
+        .from("sales")
+        .select("id, full_name, email, plan, amount_paid, date_availed, receipt_url, created_at")
+        .order("created_at", { ascending: false })
+        .limit(200);
+
+      if (error) throw error;
+      cachedSales = data || [];
+    }
+
+    function money(n) {
+      const v = Number(n || 0);
+      return v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function renderStats() {
+      const count = cachedSales.length;
+      const revenue = cachedSales.reduce((sum, r) => sum + Number(r.amount_paid || 0), 0);
+      const lifetime = cachedSales.filter(r => r.plan === "Lifetime").length;
+      const m1 = cachedSales.filter(r => r.plan === "1Month").length;
+
+      statCount.textContent = count;
+      statRevenue.textContent = money(revenue);
+      statLifetime.textContent = lifetime;
+      stat1Month.textContent = m1;
+    }
+
+    function renderSales() {
+      const q = (searchInput.value || "").toLowerCase().trim();
+      const plan = filterPlan.value;
+
+      const rows = cachedSales.filter(r => {
+        const matchQ =
+          !q ||
+          (r.full_name || "").toLowerCase().includes(q) ||
+          (r.email || "").toLowerCase().includes(q);
+        const matchPlan = !plan || r.plan === plan;
+        return matchQ && matchPlan;
+      });
+
+      salesTbody.innerHTML = rows.map(r => {
+        const date = r.date_availed || "";
+        const receipt = r.receipt_url
+          ? `<a href="${r.receipt_url}" target="_blank" rel="noopener">View</a>`
+          : "-";
+        return `
+          <tr>
+            <td>${date}</td>
+            <td>${escapeHtml(r.full_name || "")}</td>
+            <td>${escapeHtml(r.email || "")}</td>
+            <td>${escapeHtml(r.plan || "")}</td>
+            <td>${money(r.amount_paid)}</td>
+            <td>${receipt}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, m => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[m]));
+    }
+
+    btnRefresh.addEventListener("click", async () => {
+      hideMsg();
+      btnRefresh.disabled = true;
+      btnRefresh.textContent = "Refreshing...";
+      try {
+        await loadSales();
+        renderSales();
+        renderStats();
+        showMsg("✅ Refreshed.", true);
+      } catch (err) {
+        console.error(err);
+        showMsg("❌ " + (err?.message || "Refresh failed"), false);
+      } finally {
+        btnRefresh.disabled = false;
+        btnRefresh.textContent = "Refresh";
+      }
+    });
+
+    searchInput.addEventListener("input", renderSales);
+    filterPlan.addEventListener("change", renderSales);
+
+    // On first load, show customer view
+    showView("customer");
+  </script>
 </body>
 </html>
