@@ -65,83 +65,69 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script>
-    // ✅ 1) Paste your Supabase credentials here
-    const SUPABASE_URL = "https://uwqnbjzliyvbdkkiaely.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3cW5ianpsaXl2YmRra2lhZWx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2MDY1OTMsImV4cCI6MjA4ODE4MjU5M30.0BBBiysKOhyQNaeBeGMwFWlu6_F8Gj4_WgkbFNdvLYU";
+  const SUPABASE_URL = "https://uwqnbjzliyvbdkkiaely.supabase.co";
+  const SUPABASE_ANON_KEY = "YOUR_ANON_KEY";
 
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const form = document.getElementById("salesForm");
-    const msg = document.getElementById("msg");
+  const form = document.getElementById("salesForm");
+  const msg = document.getElementById("msg");
 
-    function showMsg(text, ok=true) {
-      msg.className = "msg " + (ok ? "ok" : "err");
-      msg.textContent = text;
-      msg.style.display = "block";
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+  function showMsg(text, ok=true) {
+    msg.className = "msg " + (ok ? "ok" : "err");
+    msg.textContent = text;
+    msg.style.display = "block";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
-    function safeFileName(name) {
-      return name.replace(/[^\w.\-]+/g, "_");
-    }
+  function safeFileName(name) {
+    return name.replace(/[^\w.\-]+/g, "_");
+  }
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      msg.style.display = "none";
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    msg.style.display = "none";
 
+    try {
       const fd = new FormData(form);
-      const full_name = fd.get("full_name").trim();
-      const email = fd.get("email").trim();
+      const full_name = (fd.get("full_name") || "").toString().trim();
+      const email = (fd.get("email") || "").toString().trim();
       const plan = fd.get("plan");
       const amount_paid = Number(fd.get("amount_paid"));
       const date_availed = fd.get("date_availed");
       const receiptFile = fd.get("receipt");
 
-      try {
-        // 1) Upload receipt to Supabase Storage
-        const fileExt = receiptFile.name.split(".").pop();
-        const filePath = `receipts/${crypto.randomUUID()}_${safeFileName(receiptFile.name)}`;
+      if (!receiptFile || !receiptFile.name) throw new Error("Please choose a receipt file.");
 
-        const { data: uploadData, error: uploadError } = await supabase
-          .storage
-          .from("receipts")
-          .upload(filePath, receiptFile, {
-            cacheControl: "3600",
-            upsert: false,
-            contentType: receiptFile.type || undefined
-          });
+      const filePath = `receipts/${crypto.randomUUID()}_${safeFileName(receiptFile.name)}`;
 
-        if (uploadError) throw uploadError;
+      const { error: uploadError } = await supabaseClient
+        .storage
+        .from("receipts")
+        .upload(filePath, receiptFile, { upsert: false });
 
-        // 2) Get public URL (because bucket is public)
-        const { data: publicUrlData } = supabase
-          .storage
-          .from("receipts")
-          .getPublicUrl(filePath);
+      if (uploadError) throw uploadError;
 
-        const receipt_url = publicUrlData.publicUrl;
+      const { data: publicUrlData } = supabaseClient
+        .storage
+        .from("receipts")
+        .getPublicUrl(filePath);
 
-        // 3) Insert row to sales table
-        const { error: insertError } = await supabase
-          .from("sales")
-          .insert([{
-            full_name,
-            email,
-            plan,
-            amount_paid,
-            date_availed,
-            receipt_url
-          }]);
+      const receipt_url = publicUrlData.publicUrl;
 
-        if (insertError) throw insertError;
+      const { error: insertError } = await supabaseClient
+        .from("sales")
+        .insert([{ full_name, email, plan, amount_paid, date_availed, receipt_url }]);
 
-        form.reset();
-        showMsg("✅ Saved! Customer info + receipt uploaded successfully.", true);
-      } catch (err) {
-        console.error(err);
-        showMsg("❌ Error: " + (err?.message || "Something went wrong"), false);
-      }
-    });
-  </script>
+      if (insertError) throw insertError;
+
+      form.reset();
+      showMsg("✅ Saved! Customer info + receipt uploaded successfully.", true);
+    } catch (err) {
+      console.error(err);
+      showMsg("❌ Error: " + (err?.message || "Something went wrong"), false);
+    }
+  });
+</script>
 </body>
 </html>
