@@ -205,9 +205,7 @@
       border: 1px solid rgba(239,68,68,.25);
       color: #7f1d1d;
     }
-    .btn-danger:hover{
-      background: rgba(239,68,68,.14);
-    }
+    .btn-danger:hover{ background: rgba(239,68,68,.14); }
     .btn-sm{
       padding: 8px 10px;
       border-radius: 10px;
@@ -253,6 +251,24 @@
     }
     .stat .k{ font-size: 12px; color: var(--muted); font-weight: 800; }
     .stat .v{ margin-top: 6px; font-size: 18px; font-weight: 950; letter-spacing:-0.02em; }
+
+    /* New: Range stats */
+    .rangestats{
+      display:grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+      margin: 12px 0 14px;
+    }
+    .rstat{
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: #fff;
+      box-shadow: var(--shadow2);
+    }
+    .rstat .k{ font-size: 12px; color: var(--muted); font-weight: 900; }
+    .rstat .v{ margin-top: 6px; font-size: 15px; font-weight: 950; letter-spacing:-0.02em; }
+    .rstat .s{ margin-top: 4px; font-size: 12px; color: var(--muted); font-weight: 800; }
 
     /* Filters row */
     .filters{
@@ -316,10 +332,85 @@
     .muted { color: var(--muted); font-size: 13px; }
     .hidden{ display:none !important; }
 
+    /* Modal */
+    .modal{
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(17,24,39,.55);
+      backdrop-filter: blur(6px);
+      z-index: 50;
+    }
+    .modal.show{ display:flex; }
+    .modal-card{
+      width: min(900px, 96vw);
+      max-height: 90vh;
+      overflow: hidden;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.35);
+      background: rgba(255,255,255,.95);
+      box-shadow: 0 28px 80px rgba(17,24,39,.25);
+    }
+    .modal-head{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 14px 14px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(236,72,153,.08), rgba(255,255,255,.0));
+    }
+    .modal-title{
+      margin:0;
+      font-size: 14px;
+      font-weight: 950;
+      letter-spacing: -.02em;
+      color: #6b2148;
+    }
+    .modal-body{
+      padding: 14px;
+      overflow: auto;
+      max-height: calc(90vh - 120px);
+      background: #fff;
+    }
+    .preview{
+      width:100%;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: #fff;
+      overflow: hidden;
+    }
+    .preview img{
+      display:block;
+      width:100%;
+      height:auto;
+    }
+    .preview iframe{
+      display:block;
+      width:100%;
+      height: 70vh;
+      border:0;
+    }
+    .modal-foot{
+      display:flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 12px 14px;
+      border-top: 1px solid var(--border);
+      background: rgba(255,255,255,.92);
+    }
+
+    @media (max-width: 980px){
+      .rangestats{ grid-template-columns: 1fr 1fr 1fr; }
+    }
     @media (max-width: 860px){
       .stats{ grid-template-columns: 1fr 1fr; }
       .grid2{ grid-template-columns: 1fr; }
       .topbar{ align-items:flex-start; flex-direction: column; }
+      .rangestats{ grid-template-columns: 1fr 1fr; }
     }
   </style>
 </head>
@@ -428,20 +519,54 @@
       <div id="adminDashboard" class="hidden">
         <div class="stats">
           <div class="stat">
-            <div class="k">Total Customers</div>
+            <div class="k">Total Customers (Loaded)</div>
             <div class="v" id="statCount">0</div>
           </div>
           <div class="stat">
-            <div class="k">Total Revenue</div>
+            <div class="k">Total Revenue (Loaded)</div>
             <div class="v" id="statRevenue">0</div>
           </div>
           <div class="stat">
-            <div class="k">Lifetime Plans</div>
+            <div class="k">Lifetime Plans (Loaded)</div>
             <div class="v" id="statLifetime">0</div>
           </div>
           <div class="stat">
-            <div class="k">1Month Plans</div>
+            <div class="k">1Month Plans (Loaded)</div>
             <div class="v" id="stat1Month">0</div>
+          </div>
+        </div>
+
+        <!-- NEW: Quick range totals -->
+        <div class="rangestats" aria-label="Sales totals by time range">
+          <div class="rstat">
+            <div class="k">Today</div>
+            <div class="v" id="rToday">0.00</div>
+            <div class="s" id="rTodayCount">0 sales</div>
+          </div>
+          <div class="rstat">
+            <div class="k">Yesterday</div>
+            <div class="v" id="rYesterday">0.00</div>
+            <div class="s" id="rYesterdayCount">0 sales</div>
+          </div>
+          <div class="rstat">
+            <div class="k">Last 7 days</div>
+            <div class="v" id="r7">0.00</div>
+            <div class="s" id="r7Count">0 sales</div>
+          </div>
+          <div class="rstat">
+            <div class="k">Last 30 days</div>
+            <div class="v" id="r30">0.00</div>
+            <div class="s" id="r30Count">0 sales</div>
+          </div>
+          <div class="rstat">
+            <div class="k">This Year</div>
+            <div class="v" id="rYear">0.00</div>
+            <div class="s" id="rYearCount">0 sales</div>
+          </div>
+          <div class="rstat">
+            <div class="k">Overall</div>
+            <div class="v" id="rAll">0.00</div>
+            <div class="s" id="rAllCount">0 sales</div>
           </div>
         </div>
 
@@ -471,9 +596,25 @@
             <tbody id="salesTbody"></tbody>
           </table>
         </div>
-        <div class="help">Showing latest 200 records (newest first).</div>
+        <div class="help">Showing latest 200 records (newest first). Stats above are calculated from the loaded records.</div>
       </div>
     </section>
+  </div>
+
+  <!-- Receipt Modal -->
+  <div id="receiptModal" class="modal" role="dialog" aria-modal="true" aria-label="Receipt preview">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 class="modal-title" id="receiptTitle">Receipt Preview</h3>
+        <button id="btnCloseReceipt" class="btn btn-ghost btn-sm" type="button">Close</button>
+      </div>
+      <div class="modal-body">
+        <div id="receiptPreview" class="preview"></div>
+      </div>
+      <div class="modal-foot">
+        <button id="btnConfirmReceipt" class="btn btn-primary" type="button">Confirm</button>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -484,9 +625,7 @@
     const supabaseClient = window.supabase.createClient(
       SUPABASE_URL,
       SUPABASE_ANON_KEY,
-      {
-        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
-      }
+      { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
     );
 
     // UI refs
@@ -517,7 +656,30 @@
     const searchInput = document.getElementById("searchInput");
     const filterPlan = document.getElementById("filterPlan");
 
+    // range stats
+    const rToday = document.getElementById("rToday");
+    const rYesterday = document.getElementById("rYesterday");
+    const r7 = document.getElementById("r7");
+    const r30 = document.getElementById("r30");
+    const rYear = document.getElementById("rYear");
+    const rAll = document.getElementById("rAll");
+    const rTodayCount = document.getElementById("rTodayCount");
+    const rYesterdayCount = document.getElementById("rYesterdayCount");
+    const r7Count = document.getElementById("r7Count");
+    const r30Count = document.getElementById("r30Count");
+    const rYearCount = document.getElementById("rYearCount");
+    const rAllCount = document.getElementById("rAllCount");
+
+    // receipt modal
+    const receiptModal = document.getElementById("receiptModal");
+    const receiptPreview = document.getElementById("receiptPreview");
+    const receiptTitle = document.getElementById("receiptTitle");
+    const btnCloseReceipt = document.getElementById("btnCloseReceipt");
+    const btnConfirmReceipt = document.getElementById("btnConfirmReceipt");
+
     let cachedSales = [];
+    let currentReceiptUrl = "";
+    let currentReceiptSaleId = "";
 
     function showMsg(text, ok=true) {
       msg.className = "msg " + (ok ? "ok" : "err");
@@ -675,6 +837,7 @@
       await loadSales();
       renderSales();
       renderStats();
+      renderRangeStats();
     }
 
     async function loadSales() {
@@ -705,8 +868,79 @@
       stat1Month.textContent = m1;
     }
 
+    function asLocalDateKey(d){
+      // YYYY-MM-DD in local time
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,"0");
+      const day = String(d.getDate()).padStart(2,"0");
+      return `${y}-${m}-${day}`;
+    }
+
+    function inRange(dateKey, startKey, endKey){
+      // inclusive range on YYYY-MM-DD strings
+      return dateKey >= startKey && dateKey <= endKey;
+    }
+
+    function renderRangeStats(){
+      // We use date_availed (YYYY-MM-DD)
+      const today = new Date();
+      const todayKey = asLocalDateKey(today);
+
+      const yest = new Date(today);
+      yest.setDate(yest.getDate() - 1);
+      const yestKey = asLocalDateKey(yest);
+
+      const d7 = new Date(today);
+      d7.setDate(d7.getDate() - 6); // include today = 7 days window
+      const d7Key = asLocalDateKey(d7);
+
+      const d30 = new Date(today);
+      d30.setDate(d30.getDate() - 29); // include today = 30 days window
+      const d30Key = asLocalDateKey(d30);
+
+      const yearStartKey = `${today.getFullYear()}-01-01`;
+
+      const totalAll = sumByRange("0000-01-01", "9999-12-31");
+      const totalToday = sumByRange(todayKey, todayKey);
+      const totalYesterday = sumByRange(yestKey, yestKey);
+      const total7 = sumByRange(d7Key, todayKey);
+      const total30 = sumByRange(d30Key, todayKey);
+      const totalYear = sumByRange(yearStartKey, todayKey);
+
+      rAll.textContent = money(totalAll.sum);
+      rAllCount.textContent = `${totalAll.count} sales`;
+
+      rToday.textContent = money(totalToday.sum);
+      rTodayCount.textContent = `${totalToday.count} sales`;
+
+      rYesterday.textContent = money(totalYesterday.sum);
+      rYesterdayCount.textContent = `${totalYesterday.count} sales`;
+
+      r7.textContent = money(total7.sum);
+      r7Count.textContent = `${total7.count} sales`;
+
+      r30.textContent = money(total30.sum);
+      r30Count.textContent = `${total30.count} sales`;
+
+      rYear.textContent = money(totalYear.sum);
+      rYearCount.textContent = `${totalYear.count} sales`;
+    }
+
+    function sumByRange(startKey, endKey){
+      let sum = 0;
+      let count = 0;
+      for (const r of cachedSales){
+        const key = (r.date_availed || "").slice(0,10); // expect YYYY-MM-DD
+        if (!key) continue;
+        if (inRange(key, startKey, endKey)){
+          sum += Number(r.amount_paid || 0);
+          count += 1;
+        }
+      }
+      return { sum, count };
+    }
+
     async function deleteSaleById(id) {
-      // extra confirm
       const ok = confirm("Delete this record permanently?\n\nThis cannot be undone.");
       if (!ok) return;
 
@@ -720,16 +954,62 @@
 
         if (error) throw error;
 
-        // remove from cache and re-render
         cachedSales = cachedSales.filter(r => r.id !== id);
         renderSales();
         renderStats();
+        renderRangeStats();
         showMsg("✅ Deleted successfully.", true);
       } catch (err) {
         console.error(err);
         showMsg("❌ " + (err?.message || "Delete failed"), false);
       }
     }
+
+    // Receipt modal helpers
+    function openReceiptModal(url, saleId, nameOrEmail){
+      currentReceiptUrl = url || "";
+      currentReceiptSaleId = saleId || "";
+      receiptTitle.textContent = `Receipt Preview — ${nameOrEmail || "Customer"}`;
+      receiptPreview.innerHTML = "";
+
+      if (!currentReceiptUrl){
+        receiptPreview.innerHTML = `<div class="muted">No receipt URL found.</div>`;
+      } else {
+        const lower = currentReceiptUrl.toLowerCase();
+        const isPdf = lower.includes(".pdf") || lower.includes("application/pdf");
+        if (isPdf){
+          receiptPreview.innerHTML = `<iframe src="${escapeAttr(currentReceiptUrl)}"></iframe>`;
+        } else {
+          receiptPreview.innerHTML = `<img src="${escapeAttr(currentReceiptUrl)}" alt="Receipt image" />`;
+        }
+      }
+
+      receiptModal.classList.add("show");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeReceiptModal(){
+      receiptModal.classList.remove("show");
+      receiptPreview.innerHTML = "";
+      document.body.style.overflow = "";
+      currentReceiptUrl = "";
+      currentReceiptSaleId = "";
+    }
+
+    btnCloseReceipt.addEventListener("click", closeReceiptModal);
+    receiptModal.addEventListener("click", (e) => {
+      if (e.target === receiptModal) closeReceiptModal();
+    });
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && receiptModal.classList.contains("show")) closeReceiptModal();
+    });
+
+    btnConfirmReceipt.addEventListener("click", () => {
+      // Simple confirmation (no DB write). If you want "confirmed" saved in DB,
+      // tell me and I'll add a "confirmed" column + update policy.
+      showMsg("✅ Receipt confirmed.", true);
+      closeReceiptModal();
+    });
 
     function renderSales() {
       const q = (searchInput.value || "").toLowerCase().trim();
@@ -746,8 +1026,10 @@
 
       salesTbody.innerHTML = rows.map(r => {
         const date = r.date_availed || "";
-        const receipt = r.receipt_url
-          ? `<a class="receipt-link" href="${r.receipt_url}" target="_blank" rel="noopener">View</a>`
+        const hasReceipt = !!r.receipt_url;
+
+        const receiptBtn = hasReceipt
+          ? `<button class="receipt-link" type="button" data-receipt-url="${escapeAttr(r.receipt_url)}" data-receipt-id="${escapeAttr(r.id)}" data-receipt-name="${escapeAttr((r.full_name || r.email || "Customer"))}">View</button>`
           : `<span class="muted">—</span>`;
 
         return `
@@ -757,25 +1039,42 @@
             <td>${escapeHtml(r.email || "")}</td>
             <td>${escapeHtml(r.plan || "")}</td>
             <td>${money(r.amount_paid)}</td>
-            <td>${receipt}</td>
+            <td>${receiptBtn}</td>
             <td>
               <div class="actions">
-                <button class="btn btn-danger btn-sm" type="button" data-delete-id="${escapeHtml(r.id)}">Delete</button>
+                <button class="btn btn-danger btn-sm" type="button" data-delete-id="${escapeAttr(r.id)}">Delete</button>
               </div>
             </td>
           </tr>
         `;
       }).join("");
 
-      // attach delete handlers
+      // delete handlers
       document.querySelectorAll("[data-delete-id]").forEach(btn => {
         btn.addEventListener("click", () => deleteSaleById(btn.getAttribute("data-delete-id")));
+      });
+
+      // receipt handlers (open modal in-page)
+      document.querySelectorAll("[data-receipt-url]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          openReceiptModal(
+            btn.getAttribute("data-receipt-url"),
+            btn.getAttribute("data-receipt-id"),
+            btn.getAttribute("data-receipt-name")
+          );
+        });
       });
     }
 
     function escapeHtml(s) {
       return String(s).replace(/[&<>"']/g, m => ({
         "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[m]));
+    }
+    function escapeAttr(s){
+      // for putting into HTML attributes safely
+      return String(s).replace(/["&<>]/g, m => ({
+        '"':"&quot;","&":"&amp;","<":"&lt;",">":"&gt;"
       }[m]));
     }
 
@@ -787,6 +1086,7 @@
         await loadSales();
         renderSales();
         renderStats();
+        renderRangeStats();
         showMsg("✅ Refreshed.", true);
       } catch (err) {
         console.error(err);
