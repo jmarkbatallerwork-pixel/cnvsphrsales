@@ -554,7 +554,7 @@
             <div class="s" id="r7Count">0 sales</div>
           </div>
           <div class="rstat">
-            <div class="k">Last 30 days</div>
+            <div class="k">This Month</div>
             <div class="v" id="r30">0.00</div>
             <div class="s" id="r30Count">0 sales</div>
           </div>
@@ -909,9 +909,8 @@
       d7.setDate(d7.getDate() - 6); // include today = 7 days window
       const d7Key = asLocalDateKey(d7);
 
-      const d30 = new Date(today);
-      d30.setDate(d30.getDate() - 29); // include today = 30 days window
-      const d30Key = asLocalDateKey(d30);
+const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+const monthStartKey = asLocalDateKey(monthStart);
 
       const yearStartKey = `${today.getFullYear()}-01-01`;
 
@@ -919,7 +918,7 @@
       const totalToday = sumByRange(todayKey, todayKey);
       const totalYesterday = sumByRange(yestKey, yestKey);
       const total7 = sumByRange(d7Key, todayKey);
-      const total30 = sumByRange(d30Key, todayKey);
+const total30 = sumByRange(monthStartKey, todayKey);
       const totalYear = sumByRange(yearStartKey, todayKey);
 
       rAll.textContent = money(totalAll.sum);
