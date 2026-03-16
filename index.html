@@ -840,17 +840,32 @@
       renderRangeStats();
     }
 
-    async function loadSales() {
-      const { data, error } = await supabaseClient
-        .from("sales")
-        .select("id, full_name, email, plan, amount_paid, date_availed, receipt_url, created_at")
-        .order("created_at", { ascending: false })
-        .limit(200);
+   async function loadSales() {
+  let allData = [];
+  let from = 0;
+  const batchSize = 1000;
+  let done = false;
 
-      if (error) throw error;
-      cachedSales = data || [];
+  while (!done) {
+    const { data, error } = await supabaseClient
+      .from("sales")
+      .select("id, full_name, email, plan, amount_paid, date_availed, receipt_url, created_at")
+      .order("created_at", { ascending: false })
+      .range(from, from + batchSize - 1);
+
+    if (error) throw error;
+
+    allData = allData.concat(data);
+
+    if (data.length < batchSize) {
+      done = true;
+    } else {
+      from += batchSize;
     }
+  }
 
+  cachedSales = allData;
+}
     function money(n) {
       const v = Number(n || 0);
       return v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
